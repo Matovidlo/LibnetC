@@ -6,13 +6,19 @@
 # make pack, make clean
 
 CC=gcc
-CPPFLAGS=-std=gnu99 -Wall -Wextra -pedantic -pthread
+CPPFLAGS=-std=gnu99 -Wall -Wextra -pedantic -pthread -g3
 LDFLAGS=-L.
 
 APP=libnetc
+DBG=libnetcd
 LIBOBJ=libnetc.o
 
 all: $(APP)
+
+debug: $(DBG)
+
+$(DBG): main.c $(LIBOBJ)
+	$(CC) $(CPPFLAGS) -DDEBUG -g3 $^ -o $@
 
 $(APP): main.c $(LIBOBJ)
 	$(CC) $(CPPFLAGS) $^ -o $@
