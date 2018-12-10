@@ -19,16 +19,16 @@ struct addrinfo initialize_addrinfo(bool is_icmp, bool is_udp, bool is_raw) {
     hints.ai_family = AF_UNSPEC;
     hints.ai_flags = hints.ai_flags;
     hints.ai_protocol = 0;
-    if(is_icmp) {
+    if (is_icmp) {
         hints.ai_protocol = IPPROTO_ICMP;
-    } 
-    if(is_udp) {
+    }
+    if (is_udp) {
         hints.ai_socktype = SOCK_DGRAM;
-        if(is_raw)
+        if (is_raw)
             hints.ai_socktype = SOCK_RAW;
     } else {
         hints.ai_socktype = SOCK_STREAM;
-        if(is_raw)
+        if (is_raw)
             hints.ai_socktype = SOCK_RAW;
     }
     return hints;
@@ -101,7 +101,7 @@ bool is_exiting() {
     return libnet_globals.exiting_program;
 }
 
-void *runner(bool is_concurrent, struct thread_args arguments, void *(*run)(void *)) {
+void *runner(bool is_concurrent, struct thread_args arguments, callback_fn run) {
     void *result = NULL;
     // No function passed inside
     if(run == NULL)
@@ -123,7 +123,7 @@ void *runner(bool is_concurrent, struct thread_args arguments, void *(*run)(void
     return result;
 }
 
-void joiner(void *(*process_result)(void *)) {
+void joiner(callback_fn process_result) {
     int pthread_cancel_value = 0;
     void *result;
     for(int i = 0; i < libnet_globals.thread_id_counter; ++i) {
@@ -142,7 +142,7 @@ void joiner(void *(*process_result)(void *)) {
 }
 
 void *udp_client(bool is_ipv6, bool is_concurrent, const char *ip_address, 
-                 uint16_t port, void *(*run)(void *)) {
+                 uint16_t port, callback_fn run) {
     struct sockaddr *peer;
     struct addrinfo hints;
     int socket;
@@ -196,7 +196,7 @@ void *udp_server(bool is_ipv6, bool is_concurrent, bool get_packet_length, const
 }
 
 void *tcp_client(bool is_ipv6, bool is_concurrent, const char*ip_address, 
-                 uint16_t port, void *(*run)(void *)) {
+                 uint16_t port, callback_fn run) {
     struct sockaddr *peer;
     socklen_t peer_addr_len;
     struct addrinfo hints;

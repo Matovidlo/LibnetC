@@ -23,6 +23,8 @@
 #include<unistd.h>
 #include<pthread.h>
 
+typedef void *(*callback_fn)(void *);
+
 struct thread_args {
     int socket;
     struct sockaddr *peer;
