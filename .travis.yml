@@ -33,7 +33,6 @@ addons:
       - cmake
         
 language: c
-install: make get-deps
 
 before_script:
   - mkdir build
