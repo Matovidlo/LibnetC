@@ -33,5 +33,12 @@ addons:
       - cmake
         
 language: c
-install: make
-script: cmake
+install: make get-deps
+
+before_script:
+  - mkdir build
+  - cd build
+  - cmake ..
+  
+script:
+  - make
