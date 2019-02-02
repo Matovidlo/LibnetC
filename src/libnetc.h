@@ -4,13 +4,14 @@
  * It's used for lightweight usage of sockets
  * wihout any knowledge of network programming.
  * Creators: Martin Vasko and David Bolvansky 
- * EMail: matovidlo2@gmail.com/xvasko12@stud.fit.vutbr.cz
+ * Email: matovidlo2@gmail.com/xvasko12@stud.fit.vutbr.cz
  **/
 #ifndef LIBCNET
 #define LIBCNET
 
 #include<sys/types.h>
 #include<sys/socket.h>
+#include<sys/time.h>
 #include<netdb.h>
 #include<stdio.h>
 #include<stdlib.h>
@@ -22,6 +23,7 @@
 #include<signal.h>
 #include<unistd.h>
 #include<pthread.h>
+#include<fcntl.h>
 
 typedef void *(*callback_fn)(void *);
 
@@ -68,6 +70,14 @@ bool is_exiting();
  * global variable 'thread_id_counter' 
  **/
 void *runner(bool is_concurrent, struct thread_args arguments, void *(*run)(void *));
+
+/* This is support function for get recieved packet length.
+ * Mostly it should be used when we need to know how many bytes of recieved message comes.
+ * Be carefull, it has a higher complexity than guessing or saying how many bytes should come.
+ **/
+unsigned long long UDP_recieved_packet_legth(int socket, struct sockaddr *address);
+unsigned long long TCP_recieved_packet_legth(int socket);
+
 /* Joiner joins all of created threads till they end or signal SIGINT is pressed.
  * This is not needed when no concurrent threads are created.
  * (no client or server has argument is_concurrent set on true). This is good
@@ -76,7 +86,7 @@ void *runner(bool is_concurrent, struct thread_args arguments, void *(*run)(void
  * !!! IMPORTANT !!!
  * Joiner discards all of return values from threads when no function passed as argument.
  **/
-void joiner(void *(*process_result)(void *));
+void **joiner(void *(*process_result)(void *));
 
 /* 
  * Return null, when could not establish any addres or 
@@ -87,8 +97,8 @@ void *udp_client(bool is_ipv6, bool is_concurrent, const char*ip_address,
                  uint16_t port, void *(*run)(void *));
 void *tcp_client(bool is_ipv6, bool is_concurrent, const char*ip_address,
                  uint16_t port, void *(*run)(void *));
-void *udp_server(bool is_ipv6, bool is_concurrent, bool get_packet_length, 
-                 const char*ip_address, uint16_t port, void *(*run)(void *));
+void *udp_server(bool is_ipv6, bool is_concurrent, const char*ip_address,
+                 uint16_t port, void *(*run)(void *));
 void *tcp_server(bool is_ipv6, bool is_concurrent, const char*ip_address,
                  uint16_t port, void *(*run)(void *));
 /* TODO: ICMP server and client */
