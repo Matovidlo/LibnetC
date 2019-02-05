@@ -24,7 +24,7 @@
 #include<unistd.h>
 #include<pthread.h>
 #include<fcntl.h>
-#include"../logger/log.c/src/log.h"
+#include"../log.c/src/log.h"
 
 typedef void *(*callback_fn)(void *);
 
