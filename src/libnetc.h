@@ -24,6 +24,7 @@
 #include<unistd.h>
 #include<pthread.h>
 #include<fcntl.h>
+#include"../logger/log.c/src/log.h"
 
 typedef void *(*callback_fn)(void *);
 
@@ -40,22 +41,16 @@ struct libnetc_globals {
     pthread_mutex_t lock;
     pthread_t thread_id_glob[NUMBER_OF_THREAD];
 };
-/* global variable to detect program exiting state, mutex
- * save all of the threads and it's counter.
- **/
-static struct libnetc_globals libnet_globals = {true, 0, PTHREAD_MUTEX_INITIALIZER, {0, }};
 
 /* Signal catcher. Set's is_exiting variable when reporting Ctrl+C. */
 void signal_handler(int signal_number);
 
 /*
- *  Create ipv4 or ipv6 connection based on value of parameter
+ * Create ipv4 or ipv6 connection based on value of parameter
  * This function should be private within class context 
  **/
 
 struct addrinfo initialize_addrinfo(bool is_icmp, bool is_udp, bool is_raw);
-// struct sockaddr_in fill_ipv4(struct addrinfo *rp, struct hostent *peer, uint_16 port);
-// struct sockaddr_in6 fill_ipv6(struct addrinfo *rp, struct hostent *peer, uint_16 port);
 struct sockaddr *create_ip_connection(const char *node, const char *port,
                                       struct addrinfo hints, bool is_ipv6,
                                       int *socket);
@@ -66,25 +61,26 @@ struct sockaddr *create_ip_connection(const char *node, const char *port,
  **/
 bool is_exiting();
 
-/* Runs thread on separate thread_id. Last thread_id is number of 
+/* 
+ * Runs thread on separate thread_id. Last thread_id is number of 
  * global variable 'thread_id_counter' 
  **/
 void *runner(bool is_concurrent, struct thread_args arguments, void *(*run)(void *));
 
-/* This is support function for get recieved packet length.
+/* 
+ * This is support function for get recieved packet length.
  * Mostly it should be used when we need to know how many bytes of recieved message comes.
  * Be carefull, it has a higher complexity than guessing or saying how many bytes should come.
  **/
 unsigned long long UDP_recieved_packet_legth(int socket, struct sockaddr *address);
 unsigned long long TCP_recieved_packet_legth(int socket);
 
-/* Joiner joins all of created threads till they end or signal SIGINT is pressed.
+/* 
+ * Joiner joins all of created threads till they end or signal SIGINT is pressed.
  * This is not needed when no concurrent threads are created.
  * (no client or server has argument is_concurrent set on true). This is good
  * only when part of clients and servers has to be run and after that other
  * computation is executed.
- * !!! IMPORTANT !!!
- * Joiner discards all of return values from threads when no function passed as argument.
  **/
 void **joiner(void *(*process_result)(void *));
 
@@ -103,8 +99,10 @@ void *tcp_server(bool is_ipv6, bool is_concurrent, const char*ip_address,
                  uint16_t port, void *(*run)(void *));
 /* TODO: ICMP server and client */
 
-/* This function should be overriden when c++ */
+/* This function should be overriden when c/c++ */
 void *run_udp_server(void *thread_args);
 void *run_udp_client(void *thread_args);
+void *run_tcp_server(void *thread_args);
+void *run_tcp_client(void *thread_args);
 
 #endif

@@ -9,8 +9,11 @@
 
 #include"libnetc.h"
 
-// Global variables
-extern struct libnetc_globals libnet_globals;
+/* 
+ * Global variable to detect program exiting state, mutex
+ * save all of the threads and it's counter.
+ **/
+static struct libnetc_globals libnet_globals = {true, 0, PTHREAD_MUTEX_INITIALIZER, {0, }};
 
 
 struct addrinfo initialize_addrinfo(bool is_icmp, bool is_udp, bool is_raw) {
@@ -47,7 +50,6 @@ struct sockaddr *create_ip_connection(const char *node, const char *port,
         return peer_addr;
     }
     for(iterator = result; iterator != NULL; iterator = iterator->ai_next) {
-        // peer_addr = iterator->ai_addr;
         memcpy(peer_addr, iterator->ai_addr, sizeof(struct sockaddr));
         if(!peer_addr) {
             perror("No peer address found!");
@@ -70,13 +72,7 @@ struct sockaddr *create_ip_connection(const char *node, const char *port,
                 break;
             }
         }
-        // TODO: need probably bind to check wether connnection is correct.
     }
-
-    // if (iterator == NULL) {
-    //     perror("Could not find any address\n");
-    //     return peer_addr;
-    // }
     freeaddrinfo(result);
     return peer_addr;
 }
@@ -87,17 +83,17 @@ void signal_handler(int signal_number) {
         libnet_globals.exiting_program = false;
         pthread_mutex_unlock(&(libnet_globals.lock));
     }
-    // Cancel all created (detached) threads when SIGNINT sent.
-    // int pthread_cancel_value = 0;
-    // for(int i = 0; i < NUMBER_OF_THREAD; ++i) {
-    //     pthread_cancel_value = pthread_cancel(thread_id_glob[i]);
-    //     if(pthread_cancel_value != 0)
-    //         break;
-    // }
 }
 
 // Return exiting_program state.
 bool is_exiting() {
+    if(libnet_globals.exiting_program == true) {
+       int retval = pthread_mutex_destroy(&libnet_globals.lock);
+       if(retval != 0){ 
+           perror("Could not destroy mutex lock!\n");
+           return libnet_globals.exiting_program;
+       } 
+    }
     return libnet_globals.exiting_program;
 }
 
@@ -151,7 +147,7 @@ unsigned long long UDP_recieved_packet_legth(int socket, struct sockaddr *addres
             perror("Recieve of packet failed\n");
         }
     } else {
-        printf("No data within 1 second\n");
+        log_info("No data within 1 second");
     }
     
     free(recieved_string);
@@ -181,7 +177,7 @@ unsigned long long TCP_recieved_packet_legth(int socket) {
             perror("Recieve of packet failed\n");
         }
     } else {
-        printf("No data within 1 second\n");
+        log_info("No data within 1 second");
     }
     
     free(recieved_string);
@@ -190,7 +186,8 @@ unsigned long long TCP_recieved_packet_legth(int socket) {
 
 void **joiner(callback_fn process_result) {
     int pthread_cancel_value = 0;
-    void **array_results = (void **) malloc(sizeof(void **) * 1024);
+    // Constant is based on number of created threads
+    void **array_results = (void **) malloc(sizeof(void **) * NUMBER_OF_THREAD);
     memset(array_results, 0, sizeof(*array_results));
     void *result;
 
@@ -208,7 +205,6 @@ void **joiner(callback_fn process_result) {
             break;
     }
     libnet_globals.exiting_program = true;
-    // TODO: destroy mutex(lock)
     return array_results;
 }
 
@@ -227,7 +223,7 @@ void *udp_client(bool is_ipv6, bool is_concurrent, const char *ip_address,
     sprintf(port_number, "%u", port);
     peer = create_ip_connection(ip_address, port_number, hints, is_ipv6, &socket);
     // Log information
-    // printf("UDP CLIENT:%d, %s\n", socket, peer->sa_data);
+    log_debug("UDP CLIENT:%d, %s", socket, peer->sa_data);
     if(!peer) {
         return result;
     }
@@ -259,8 +255,7 @@ void *udp_server(bool is_ipv6, bool is_concurrent, const char*ip_address,
         return result;
     }
     peer_addr_len = sizeof(*peer);
-    // Log information
-    // printf("UDP SERVER:%d, %s, %u\n", socket, peer->sa_data, peer_addr_len);
+    log_debug("UDP SERVER:%d, %s, %u", socket, peer->sa_data, peer_addr_len);
     if(bind(socket, peer, peer_addr_len) == -1) {
         perror("Could not bind socket\n");
         return result;
@@ -299,7 +294,7 @@ void *tcp_client(bool is_ipv6, bool is_concurrent, const char*ip_address,
     //     perror("Could not connect\n");
     //     return result;
     // }
-    
+
     signal(SIGINT, signal_handler);
     struct thread_args arguments = {socket, peer};
     /* Before end of client run thread or function without thread. */
@@ -326,8 +321,7 @@ void *tcp_server(bool is_ipv6, bool is_concurrent, const char*ip_address,
         return result;
     }
     peer_addr_len = sizeof(*peer);
-    // Log information
-    // printf("TCP Server:%d, %s, %u\n", socket, peer->sa_data, peer_addr_len);
+    log_debug("TCP Server:%d, %s, %u", socket, peer->sa_data, peer_addr_len);
     // Bind to socket
     if(bind(socket, peer, peer_addr_len) == -1) {
         perror("TCP Server could not bind socket\n");
