@@ -26,6 +26,19 @@
 #include<fcntl.h>
 #include"../log.c/src/log.h"
 
+#ifdef DEBUG
+#define DEBUG_PRINT 1
+#else
+#define DEBUG_PRINT 0
+#endif
+/* macro for number of threads variable. */
+#define NUMBER_OF_THREAD 16384
+#define PDU_LENGTH 1024
+#define RECIEVE_TIMEOUT_S 1
+#define RECIEVE_TIMEOUT_US 0
+#define debug_print(fmt, ...) \
+            do { if (DEBUG_PRINT) log_debug(stderr, fmt, __VA_ARGS__); } while (0)
+
 typedef void *(*callback_fn)(void *);
 
 struct thread_args {
@@ -33,13 +46,15 @@ struct thread_args {
     struct sockaddr *peer;
 };
 
-/* macro for number of threads variable. */
-#define NUMBER_OF_THREAD 16384
+/* Globals for libned for killing and slowly detaching resources */
 struct libnetc_globals {
-    bool exiting_program;
-    int thread_id_counter;
-    pthread_mutex_t lock;
-    pthread_t thread_id_glob[NUMBER_OF_THREAD];
+    bool exiting_program;                       /* Detect wheter program should 
+                                                   be exited (signal catched)*/
+    int thread_id_counter;                      /* Thread identifier counter */
+    pthread_mutex_t lock;                       /* Lock for changing 
+                                                   sensitive values of threads.*/
+    pthread_t thread_id_glob[NUMBER_OF_THREAD]; /* All created thread. 
+                                                   Used for joiner/pthread_detach mostly*/
 };
 
 /* Signal catcher. Set's is_exiting variable when reporting Ctrl+C. */
@@ -93,16 +108,21 @@ void *udp_client(bool is_ipv6, bool is_concurrent, const char*ip_address,
                  uint16_t port, void *(*run)(void *));
 void *tcp_client(bool is_ipv6, bool is_concurrent, const char*ip_address,
                  uint16_t port, void *(*run)(void *));
+void *imcp_client(bool is_ipv6, bool is_concurrent, const char*ip_address,
+                 uint16_t port, void *(*run)(void *));
 void *udp_server(bool is_ipv6, bool is_concurrent, const char*ip_address,
                  uint16_t port, void *(*run)(void *));
 void *tcp_server(bool is_ipv6, bool is_concurrent, const char*ip_address,
                  uint16_t port, void *(*run)(void *));
-/* TODO: ICMP server and client */
+void *imcp_server(bool is_ipv6, bool is_concurrent, const char*ip_address,
+                 uint16_t port, void *(*run)(void *));
 
 /* This function should be overriden when c/c++ */
 void *run_udp_server(void *thread_args);
 void *run_udp_client(void *thread_args);
 void *run_tcp_server(void *thread_args);
 void *run_tcp_client(void *thread_args);
+void *run_icmp_server(void *thread_args);
+void *run_icmp_client(void *thread_args);
 
 #endif

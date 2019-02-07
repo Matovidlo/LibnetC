@@ -124,15 +124,15 @@ void *runner(bool is_concurrent, struct thread_args arguments, callback_fn run) 
 
 unsigned long long UDP_recieved_packet_legth(int socket, struct sockaddr *address) {
     socklen_t address_length = sizeof(*address);
-    int length = 1024; // This sould be maximum amount of one packet
+    int length = PDU_LENGTH; // This sould be maximum amount of one packet
     char *recieved_string = malloc(length);
     memset(recieved_string, 0, length);
     int recieved_length = length;
     fd_set rd_flag;
     // set timeval to 1 second
     struct timeval timeout;
-    timeout.tv_sec = 1;
-    timeout.tv_usec = 0;
+    timeout.tv_sec = RECIEVE_TIMEOUT_S;
+    timeout.tv_usec = RECIEVE_TIMEOUT_US;
     // select socket to read from it. When no data timeout.
     fcntl(socket, F_GETFD, 0);
     FD_ZERO(&rd_flag);
@@ -147,7 +147,7 @@ unsigned long long UDP_recieved_packet_legth(int socket, struct sockaddr *addres
             perror("Recieve of packet failed\n");
         }
     } else {
-        log_info("No data within 1 second");
+        log_info("No data within %d second/seconds", RECIEVE_TIMEOUT_S);
     }
     
     free(recieved_string);
@@ -155,15 +155,15 @@ unsigned long long UDP_recieved_packet_legth(int socket, struct sockaddr *addres
 }
 
 unsigned long long TCP_recieved_packet_legth(int socket) {
-    int length = 1024; // This sould be maximum amount of one packet
+    int length = PDU_LENGTH; // This sould be maximum amount of one packet
     char *recieved_string = malloc(length);
     memset(recieved_string, 0, length);
     int recieved_length = length;
     fd_set rd_flag;
     // set timeval to 1 second
     struct timeval timeout;
-    timeout.tv_sec = 1;
-    timeout.tv_usec = 0;
+    timeout.tv_sec = RECIEVE_TIMEOUT_S;
+    timeout.tv_usec = RECIEVE_TIMEOUT_US;
     // select socket to read from it. When no data timeout.
     fcntl(socket, F_GETFD, 0);
     FD_ZERO(&rd_flag);
@@ -177,7 +177,7 @@ unsigned long long TCP_recieved_packet_legth(int socket) {
             perror("Recieve of packet failed\n");
         }
     } else {
-        log_info("No data within 1 second");
+        log_info("No data within %d second/seconds", RECIEVE_TIMEOUT_S);
     }
     
     free(recieved_string);
@@ -217,13 +217,12 @@ void *udp_client(bool is_ipv6, bool is_concurrent, const char *ip_address,
     struct addrinfo hints;
     int socket;
     void *result = NULL;
-    /* FIXME: setsockopt can be also called */
     hints = initialize_addrinfo(false, true, false);
     char port_number[10];
     sprintf(port_number, "%u", port);
     peer = create_ip_connection(ip_address, port_number, hints, is_ipv6, &socket);
     // Log information
-    log_debug("UDP CLIENT:%d, %s", socket, peer->sa_data);
+    debug_print("UDP CLIENT:%d, %s", socket, peer->sa_data);
     if(!peer) {
         return result;
     }
@@ -243,19 +242,18 @@ void *udp_server(bool is_ipv6, bool is_concurrent, const char*ip_address,
     struct addrinfo hints;
     int socket;
     void *result = NULL;
-    /* FIXME: setsockopt can be also called */
     hints = initialize_addrinfo(false, true, false);
     char port_number[10];
     sprintf(port_number, "%u", port);
     peer = create_ip_connection(ip_address, port_number, hints, is_ipv6, &socket);
-    
+    /* FIXME: setsockopt can be also called */
     // int optval = 0;
     // setsockopt(socket, SOL_IPV6, IPV6_V6ONLY, &optval, sizeof(int));
     if(!peer) {
         return result;
     }
     peer_addr_len = sizeof(*peer);
-    log_debug("UDP SERVER:%d, %s, %u", socket, peer->sa_data, peer_addr_len);
+    debug_print("UDP SERVER:%d, %s, %u", socket, peer->sa_data, peer_addr_len);
     if(bind(socket, peer, peer_addr_len) == -1) {
         perror("Could not bind socket\n");
         return result;
@@ -276,7 +274,6 @@ void *tcp_client(bool is_ipv6, bool is_concurrent, const char*ip_address,
     struct addrinfo hints;
     int socket;
     void *result = NULL;
-
     hints = initialize_addrinfo(false, false, false);
     char port_number[10];
     sprintf(port_number, "%u", port);
@@ -309,19 +306,19 @@ void *tcp_server(bool is_ipv6, bool is_concurrent, const char*ip_address,
     struct addrinfo hints;
     int socket;
     void *result = NULL;
-    /* FIXME: setsockopt can be also called */
     hints = initialize_addrinfo(false, false, false);
     char port_number[10];
     sprintf(port_number, "%u", port);
     peer = create_ip_connection(ip_address, port_number, hints, is_ipv6, &socket);
     
+    /* FIXME: setsockopt can be also called */
     // int optval = 0;
     // setsockopt(socket, SOL_IPV6, IPV6_V6ONLY, &optval, sizeof(int));
     if(!peer) {
         return result;
     }
     peer_addr_len = sizeof(*peer);
-    log_debug("TCP Server:%d, %s, %u", socket, peer->sa_data, peer_addr_len);
+    debug_print("TCP Server:%d, %s, %u", socket, peer->sa_data, peer_addr_len);
     // Bind to socket
     if(bind(socket, peer, peer_addr_len) == -1) {
         perror("TCP Server could not bind socket\n");
@@ -346,5 +343,18 @@ void *tcp_server(bool is_ipv6, bool is_concurrent, const char*ip_address,
 
     /* Before end of client run thread or function without thread. */
     result = runner(is_concurrent, arguments, run);
+    return result;
+}
+
+void *imcp_client(bool is_ipv6, bool is_concurrent, const char*ip_address,
+                 uint16_t port, void *(*run)(void *)) {
+    void *result = NULL;
+    return result;
+}
+
+
+void *imcp_server(bool is_ipv6, bool is_concurrent, const char*ip_address,
+                 uint16_t port, void *(*run)(void *)) {
+    void *result = NULL;
     return result;
 }
