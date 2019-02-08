@@ -36,19 +36,20 @@
 #define PDU_LENGTH 1024
 #define RECIEVE_TIMEOUT_S 1
 #define RECIEVE_TIMEOUT_US 0
-#define debug_print(fmt, ...) \
-            do { if (DEBUG_PRINT) log_debug(stderr, fmt, __VA_ARGS__); } while (0)
+#define debug_print(...) \
+            do { if (DEBUG_PRINT) log_debug(__VA_ARGS__); } while (0)
 
 typedef void *(*callback_fn)(void *);
 
 struct thread_args {
     int socket;
     struct sockaddr *peer;
+    socklen_t peer_addr_length;
 };
 
 /* Globals for libned for killing and slowly detaching resources */
 struct libnetc_globals {
-    bool exiting_program;                       /* Detect wheter program should 
+    bool running_program;                       /* Detect wheter program should 
                                                    be exited (signal catched)*/
     int thread_id_counter;                      /* Thread identifier counter */
     pthread_mutex_t lock;                       /* Lock for changing 
@@ -68,7 +69,7 @@ void signal_handler(int signal_number);
 struct addrinfo initialize_addrinfo(bool is_icmp, bool is_udp, bool is_raw);
 struct sockaddr *create_ip_connection(const char *node, const char *port,
                                       struct addrinfo hints, bool is_ipv6,
-                                      int *socket);
+                                      int *socket, socklen_t *peer_len);
 
 /*
  * Used when singal handler is reached. Slowly end infinite while loop
