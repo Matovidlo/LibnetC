@@ -9,25 +9,36 @@ CC=gcc
 CPPFLAGS=-std=gnu99 -Wall -Wextra -pedantic -pthread -g3
 LDFLAGS=-L.
 
+LOG=log.o
 APP=libnetc
 DBG=libnetcd
-LIBOBJ=libnetc.o
+LIBOBJ=libnetc.o log.o
+DBGOBJ=libnetcd.o log.o
+# It is also available to use += when appending to options
 
-all: $(APP)
+all: $(LOG) $(APP)
 
 debug: $(DBG)
 
-$(DBG): main.c $(LIBOBJ)
-	$(CC) $(CPPFLAGS) -DDEBUG -g3 $^ -o $@
+$(LOG): ../log.c/src/log.c
+	cd ../log.c/src && $(MAKE)
+	cp ../log.c/src/$(LOG) .
+
+$(DBG): main.c $(DBGOBJ)
+	$(CC) $(CPPFLAGS) -DDEBUG $^ -o $@
 
 $(APP): main.c $(LIBOBJ)
 	$(CC) $(CPPFLAGS) $^ -o $@
 
+libnetcd.o: libnetc.h libnetc.c
+	$(CC) $(CPPFLAGS) -DDEBUG -c libnetc.c -o $@
+
 libnetc.o: libnetc.h libnetc.c
-	$(CC) $(CPPFLAGS) -c libnetc.c
+	$(CC) $(CPPFLAGS) -c libnetc.c -o $@
 
 clean:
-	$(RM) $(APP) $(LIBOBJ) libnetc.zip
+	cd ../log.c/src && $(MAKE) clean
+	$(RM) $(APP) $(DBG) $(LIBOBJ) libnetc.zip
 
 pack: $(wildcard *.c) $(wildcard *.h) Makefile
 	zip -r libnetc.zip $@
