@@ -78,10 +78,11 @@ void *run_tcp_client(void *thread_args) {
     struct thread_args *arguments = (struct thread_args *) thread_args;
     int socket = arguments->socket;
     struct sockaddr *address = arguments->peer;
-    socklen_t peer_addr_len = sizeof(*address);
+    socklen_t peer_addr_len = arguments->peer_addr_length;
 
     if(connect(socket, address, peer_addr_len) == -1) {
         perror("Could not connect\n");
+        return NULL;
     }
 
     while(is_exiting()) {
@@ -141,8 +142,9 @@ void *run_tcp_server(void *thread_args) {
 }
 
 void tcp_client_server() {
-    tcp_server(false, true, "127.0.0.1", 1235, run_tcp_server);
-    tcp_client(false, true, "127.0.0.1", 1235, run_tcp_client);
+    // IPv6 server and client
+    tcp_server(true, true, "::1", 1235, run_tcp_server);
+    tcp_client(true, true, "::1", 1235, run_tcp_client);
 }
 
 void result_process() {
