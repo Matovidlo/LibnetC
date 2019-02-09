@@ -93,7 +93,6 @@ void signal_handler(int signal_number) {
         int retval = pthread_mutex_destroy(&libnet_globals.lock);
         if(retval){ 
             perror("Could not destroy mutex lock!\n");
-            return libnet_globals.running_program;
         }
     }
 }
