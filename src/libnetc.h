@@ -9,6 +9,7 @@
 #ifndef LIBCNET
 #define LIBCNET
 
+#include<arpa/inet.h>
 #include<sys/types.h>
 #include<sys/socket.h>
 #include<sys/time.h>
@@ -68,9 +69,9 @@ void signal_handler(int signal_number);
 
 struct addrinfo initialize_addrinfo(bool is_icmp, bool is_udp, bool is_raw);
 struct sockaddr *create_ip_connection(const char *node, const char *port,
-                                      struct addrinfo hints, bool is_ipv6,
-                                      int *socket, socklen_t *peer_len);
-
+                                      struct addrinfo hints, int *socket,
+                                      socklen_t *peer_len, bool is_ipv6);
+bool check_created_connection(int socker, struct sockaddr *peer);
 /*
  * Used when singal handler is reached. Slowly end infinite while loop
  * before detaching all of resources in concurent thread.

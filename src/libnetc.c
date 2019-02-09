@@ -38,12 +38,13 @@ struct addrinfo initialize_addrinfo(bool is_icmp, bool is_udp, bool is_raw) {
 }
 
 struct sockaddr *create_ip_connection(const char *node, const char *port, 
-                                      struct addrinfo hints, bool is_ipv6, 
-                                      int *client_sock, socklen_t *peer_len) {
+                                      struct addrinfo hints, int *client_sock,
+                                      socklen_t *peer_len, bool is_ipv6) {
     struct addrinfo *result, *iterator;
     int response;
     struct sockaddr *peer_addr = NULL;
-    
+    char address[1024];
+    void *ptr;
     response = getaddrinfo(node, port, &hints, &result);
     if (response != 0) {
         perror("Getaddrinfo failed!");
@@ -54,29 +55,38 @@ struct sockaddr *create_ip_connection(const char *node, const char *port,
         peer_addr = malloc(iterator->ai_addrlen);
         memcpy(peer_addr, iterator->ai_addr, iterator->ai_addrlen);
         (*peer_len) = iterator->ai_addrlen;
-        // printf("AddrLen: %d\n", iterator->ai_addrlen);
-        if(!peer_addr) {
-            perror("No peer address found!");
-            break;
+        
+        switch (iterator->ai_family)
+        {
+            case AF_INET:
+                ptr = &((struct sockaddr_in *) iterator->ai_addr)->sin_addr;
+                break;
+            case AF_INET6:
+                ptr = &((struct sockaddr_in6 *) iterator->ai_addr)->sin6_addr;
+                break;
         }
-        if(is_ipv6 && iterator->ai_family == AF_INET6) {
+        inet_ntop(iterator->ai_family, ptr, address, 1024);
+        debug_print("IPv%d address: %s (%s)", iterator->ai_family == PF_INET6 ? 6 : 4,
+                    address, iterator->ai_canonname);
+        if(!is_ipv6 && iterator->ai_family == AF_INET) {
             (*client_sock) = socket(iterator->ai_family,
                                     iterator->ai_socktype,
                                     iterator->ai_protocol);
-            if((*client_sock)){
+            if((*client_sock) == -1) {
+                debug_print("Getaddr info loop: Socket could not be created");
                 continue;
             }
-        } else if(!is_ipv6 && iterator->ai_family == AF_INET) {
+            break;
+        } else if(is_ipv6 && iterator->ai_family == AF_INET6) {
             (*client_sock) = socket(iterator->ai_family,
                                     iterator->ai_socktype,
                                     iterator->ai_protocol);
-            if((*client_sock)) {
+            if((*client_sock) == -1) {
+                debug_print("Getaddr info loop: Socket could not be created");
                 continue;
             }
-        } else {
-            // No socket created. Probably failed because of bad options
-            free(peer_addr);
-            log_error("Bad options given to connection creator(ipv4 or ipv6 does not match the ip address given)");
+            // when we have assigned socket, break the loop 
+            // because we have most probably wanted connection
             break;
         }
     }
@@ -213,6 +223,19 @@ void **joiner(callback_fn process_result) {
     return array_results;
 }
 
+bool check_created_connection(int socket, struct sockaddr *peer) {
+    if(socket == -1 || !peer) {
+        if(peer) {
+            log_error("Socket could not be resolved");
+            free(peer);
+        } else {
+            log_error("Socket or peer address could not be resolved");
+        }
+        return false;
+    }
+    return true;
+}
+
 /**
  * UDP Client and server implementation
  */
@@ -226,13 +249,13 @@ void *udp_client(bool is_ipv6, bool is_concurrent, const char *ip_address,
     hints = initialize_addrinfo(false, true, false);
     char port_number[10];
     sprintf(port_number, "%u", port);
-    peer = create_ip_connection(ip_address, port_number, hints, is_ipv6,
-                                &socket, &peer_addr_len);
+    peer = create_ip_connection(ip_address, port_number, hints, &socket,
+                                &peer_addr_len, is_ipv6);
     // Log information
-    debug_print("UDP Client:%d, %s", socket, peer->sa_data);
-    if(socket == -1 || !peer){
+    if(!check_created_connection(socket, peer)) {
         return result;
     }
+    debug_print("UDP Client:%d, %s", socket, peer->sa_data);
     signal(SIGINT, signal_handler);
     struct thread_args arguments = {socket, peer, peer_addr_len};
     /* Before end of client run thread or function without thread. */
@@ -252,9 +275,9 @@ void *udp_server(bool is_ipv6, bool is_concurrent, const char*ip_address,
     hints = initialize_addrinfo(false, true, false);
     char port_number[10];
     sprintf(port_number, "%u", port);
-    peer = create_ip_connection(ip_address, port_number, hints, is_ipv6,
-                                &socket, &peer_addr_len);
-    if(socket == -1 || !peer){
+    peer = create_ip_connection(ip_address, port_number, hints, &socket,
+                                &peer_addr_len, is_ipv6);
+    if(!check_created_connection(socket, peer)) {
         return result;
     }
     /* FIXME: setsockopt can be also called */
@@ -286,9 +309,9 @@ void *tcp_client(bool is_ipv6, bool is_concurrent, const char*ip_address,
     hints = initialize_addrinfo(false, false, false);
     char port_number[10];
     sprintf(port_number, "%u", port);
-    peer = create_ip_connection(ip_address, port_number, hints, is_ipv6,
-                                &socket, &peer_addr_len);
-    if(socket == -1 || !peer){
+    peer = create_ip_connection(ip_address, port_number, hints, &socket,
+                                &peer_addr_len, is_ipv6);
+    if(!check_created_connection(socket, peer)) {
         return result;
     }
     debug_print("TCP Client:%d, %s", socket, peer->sa_data);
@@ -320,9 +343,9 @@ void *tcp_server(bool is_ipv6, bool is_concurrent, const char*ip_address,
     hints = initialize_addrinfo(false, false, false);
     char port_number[10];
     sprintf(port_number, "%u", port);
-    peer = create_ip_connection(ip_address, port_number, hints, is_ipv6,
-                                &socket, &peer_addr_len);
-    if(socket == -1 || !peer){
+    peer = create_ip_connection(ip_address, port_number, hints, &socket,
+                                &peer_addr_len, is_ipv6);
+    if(!check_created_connection(socket, peer)) {
         return result;
     }
     /* FIXME: setsockopt can be also called */
