@@ -26,7 +26,6 @@
 #include<pthread.h>
 #include<fcntl.h>
 #include"../log.c/src/log.h"
-
 #ifdef DEBUG
 #define DEBUG_PRINT 1
 #else

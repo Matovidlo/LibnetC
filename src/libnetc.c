@@ -1,4 +1,4 @@
-/* This is header file for libnetc. 
+/* This is c file for libnetc. 
  * Distribued with GNU public license.
 
  * It's used for lightweight usage of sockets
