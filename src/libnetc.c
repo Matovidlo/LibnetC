@@ -45,30 +45,20 @@ struct sockaddr *create_ip_connection(const char *node, const char *port,
     struct sockaddr *peer_addr = NULL;
     char address[1024];
     void *ptr;
+    *client_sock = -1;
     response = getaddrinfo(node, port, &hints, &result);
     if (response != 0) {
-        perror("Getaddrinfo failed!");
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(response));
         return peer_addr;
     }
     
     for(iterator = result; iterator != NULL; iterator = iterator->ai_next) {
-        peer_addr = malloc(iterator->ai_addrlen);
-        memcpy(peer_addr, iterator->ai_addr, iterator->ai_addrlen);
         (*peer_len) = iterator->ai_addrlen;
-        
-        switch (iterator->ai_family)
-        {
-            case AF_INET:
-                ptr = &((struct sockaddr_in *) iterator->ai_addr)->sin_addr;
-                break;
-            case AF_INET6:
-                ptr = &((struct sockaddr_in6 *) iterator->ai_addr)->sin6_addr;
-                break;
-        }
-        inet_ntop(iterator->ai_family, ptr, address, 1024);
-        debug_print("IPv%d address: %s (%s)", iterator->ai_family == PF_INET6 ? 6 : 4,
-                    address, iterator->ai_canonname);
+
         if(!is_ipv6 && iterator->ai_family == AF_INET) {
+            peer_addr = malloc(iterator->ai_addrlen);
+            memcpy(peer_addr, iterator->ai_addr, iterator->ai_addrlen);
+            ptr = &((struct sockaddr_in *) iterator->ai_addr)->sin_addr;
             (*client_sock) = socket(iterator->ai_family,
                                     iterator->ai_socktype,
                                     iterator->ai_protocol);
@@ -78,6 +68,9 @@ struct sockaddr *create_ip_connection(const char *node, const char *port,
             }
             break;
         } else if(is_ipv6 && iterator->ai_family == AF_INET6) {
+            peer_addr = malloc(iterator->ai_addrlen);
+            memcpy(peer_addr, iterator->ai_addr, iterator->ai_addrlen);
+            ptr = &((struct sockaddr_in6 *) iterator->ai_addr)->sin6_addr;
             (*client_sock) = socket(iterator->ai_family,
                                     iterator->ai_socktype,
                                     iterator->ai_protocol);
@@ -88,7 +81,11 @@ struct sockaddr *create_ip_connection(const char *node, const char *port,
             // when we have assigned socket, break the loop 
             // because we have most probably wanted connection
             break;
+            
         }
+        inet_ntop(iterator->ai_family, ptr, address, 1024);
+        debug_print("IPv%d address: %s (%s)", iterator->ai_family == PF_INET6 ? 6 : 4,
+                    address, iterator->ai_canonname);
     }
     freeaddrinfo(result);
     return peer_addr;
